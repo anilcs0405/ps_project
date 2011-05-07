@@ -27,7 +27,6 @@ DistributedQueue::DistributedQueue(int num_master_of_masters, int num_masters, i
 		no_master_of_masters = num_master_of_masters;
 		no_masters = num_masters;
 		no_threads = num_threads;
-		queue = new WorkQueue();
 		load = new int[num_masters];
 }
 
@@ -56,6 +55,9 @@ void DistributedQueue::ProcessFunction(void *pid)
 
 		// MPI Barrier;
 		
+
+		queue = new WorkQueue();
+
 		my_id = 0;
 
 		pthread_t threads[NUM_THREADS];
@@ -106,16 +108,18 @@ void DistributedQueue::ProcessFunction(void *pid)
 void* DistributedQueue::CommunicationFunction(void* thread_id){
 
 		// This thread runs indefinitely till the program is cancelled
-
-		MPI_Request request;
+		int mysize 
+		MPI_Request request[];
 
 		if(ismasterofmaster(my_id)){
 			while(1){
-				for(int i = no_master_of_masters ; i < no_masters; i++){
-					//MPI_Irecv();					
+				for (i=0; i<size-1; i++)
+				{
+				    	
 				}
-				for(int i = no_master_of_masters ; i < no_masters; i++){
-					//MPI_Irecv();					
+				for (i=0; i<size-1; i++)
+				{
+				    	
 				}				
 				break;		
 			}				
