@@ -12,7 +12,7 @@
 
 using namespace std;
 
-void *TFunction(void *threadid)
+int main (int argc, char *argv[])
 {
 	int num_master_of_masters;
 	int num_masters;
@@ -23,12 +23,7 @@ void *TFunction(void *threadid)
 	// the above logic goes here;
 
 	DistributedQueue *distributed_queue = new DistributedQueue(num_master_of_masters, num_masters, num_threads);
-	distributed_queue -> ProcessFunction(threadid);
-}
-
-
-int main (int argc, char *argv[])
-{
-	    
+	distributed_queue -> ProcessFunction((void *)0);
+    
 }
 

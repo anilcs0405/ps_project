@@ -14,8 +14,7 @@ CC = mpicxx
 .cpp.o: 
 	$(CC) $(CFLAGS) $(INCLUDE) -c -o $*.o $<
 
-ALL.O = FileIO.o Queue.o SharedQueue.o DistributedQueue.o Master.o
-
+ALL.O = FileIO.o WorkQueue.o DistributedQueue.o
 DistributedQueueApp: $(ALL.O)
 	$(CC) DistributedQueueMain.cpp $(CFLAGS) -o $@ $(ALL.O) $(INCLUDE) $(LIBDIR) $(LIBS)
 
