@@ -1,0 +1,27 @@
+LOCAL = /lusr
+
+INCLUDE = -I$(LOCAL)/include
+LIBDIR = -L$(LOCAL)/lib
+
+LIBS = -lpthread -lmpi
+
+CFLAGS = -g
+
+CC = mpicxx
+
+.SUFFIXES: .o .cpp
+
+.cpp.o: 
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $*.o $<
+
+ALL.O = FileIO.o Queue.o SharedQueue.o DistributedQueue.o Master.o
+
+DistributedQueueApp: $(ALL.O)
+	$(CC) DistributedQueueMain.cpp $(CFLAGS) -o $@ $(ALL.O) $(INCLUDE) $(LIBDIR) $(LIBS)
+
+clean:  
+	rm -f $(ALL.O)
+
+clean_all:
+	rm -f $(ALL.O) DistributedQueueApp
+
