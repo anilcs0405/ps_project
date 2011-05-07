@@ -8,19 +8,22 @@
 #include <pthread.h>
 
 #include "FileIO.h"
-#include "SharedQueue.h"
 #include "DistributedQueue.h"
-#include "Master.h"
-
-#define NUM_THREADS 16
 
 using namespace std;
 
-Master *master;
-
 void *TFunction(void *threadid)
 {
-	master -> ProcessFunction(threadid);
+	int num_master_of_masters;
+	int num_masters;
+	int num_procs;
+	int num_threads;
+
+	// decide on number of Master of Masters, Masters and initialize the master
+	// the above logic goes here;
+
+	DistributedQueue *distributed_queue = new DistributedQueue(num_master_of_masters, num_masters, num_threads);
+	distributed_queue -> ProcessFunction(threadid);
 }
 
 
