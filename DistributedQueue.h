@@ -18,6 +18,7 @@ class DistributedQueue
 		int no_master_of_masters;
 		int no_masters;
 		int no_threads;
+		int no_procs;
 		int my_id;
 		WorkQueue *queue;
 		int *load;
@@ -41,7 +42,7 @@ class DistributedQueue
 	public:
 		DistributedQueue(int num_master_of_masters, int num_masters, int num_threads);
 		~DistributedQueue(void);
-		void ProcessFunction(void *pid);
+		void ProcessFunction(int *argc, char *argv);
 		void* ThreadFunction(void* threadid);
 		void* AcceptExternalLoad(void* threadid);
 		void* CommunicationFunction(void* thread_id);
