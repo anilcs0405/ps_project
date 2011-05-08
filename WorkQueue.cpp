@@ -83,6 +83,10 @@ work_item** WorkQueue::dequeue(int num){
 	}
 }
 
+int WorkQueue::get_size(void){
+	return size;
+}
+
 void WorkQueue::reset_queue(void){
 	pthread_mutex_lock(&queue_mutex);
 	start = end = NULL;

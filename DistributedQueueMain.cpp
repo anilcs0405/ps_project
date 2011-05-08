@@ -14,24 +14,20 @@ using namespace std;
 
 int main (int argc, char *argv[])
 {
-	int num_master_of_masters;
-	int num_masters;
-	int num_procs;
-	int num_threads;
+	int num_master_of_masters = 2;
+	int num_masters = 8;
+	int num_procs = 10;
+	int num_threads = 8;
 
 	// decide on number of Master of Masters, Masters and initialize the master
 	// the above logic goes here;
 	
 	if(argc > 1 && argv[1] != NULL){
-		num_procs = atoi(argv[1]);
+		num_threads = atoi(argv[1]);
 	}
 	
-	if(argc > 2 && argv[2] != NULL){
-		num_procs = atoi(argv[2]);
-	}	
-	
-	DistributedQueue *distributed_queue = new DistributedQueue(num_master_of_masters, num_masters, num_threads);
-	distributed_queue -> ProcessFunction(&argc, argv);
+	DistributedQueue *distributed_queue = new DistributedQueue(num_threads);
+	distributed_queue -> ProcessFunction(&argc, &argv);
     
 }
 

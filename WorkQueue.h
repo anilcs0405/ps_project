@@ -25,6 +25,7 @@ class WorkQueue
 		bool enqueue(work_item **, int);
 		work_item* dequeue(void);
 		work_item** dequeue(int num);
+		int get_size(void);
 		void reset_queue(void);
 };
 

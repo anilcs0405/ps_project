@@ -21,13 +21,12 @@
 #define INTITIATE_DATA_TRANSFER 1
 #define ACCEPT_DATA_TRANSFER 2
 
+#define MEGA_MASTER 0
+
 using namespace std;
 
-DistributedQueue::DistributedQueue(int num_master_of_masters, int num_masters, int num_threads){
-		no_master_of_masters = num_master_of_masters;
-		no_masters = num_masters;
-		no_threads = num_threads;
-		load = new int[num_masters];
+DistributedQueue::DistributedQueue(int num_threads){
+		no_threads = num_threads;		
 }
 
 DistributedQueue::~DistributedQueue(){
@@ -45,16 +44,19 @@ bool DistributedQueue::ismasterofmaster(int pid){
 
 // Each machine runs ProcessFunction
 
-void DistributedQueue::ProcessFunction(int *argc, char *argv)
+void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 {
 		// MPI Init
 
-		MPI_Init(&argc,&argv);
+		MPI_Init(argc,argv);
 		MPI_Comm_size(MPI_COMM_WORLD, &no_procs);
 		MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
 
+		no_master_of_masters = no_procs/4;
+		no_masters = no_procs - no_master_of_masters;
+
 		// Are you master of master? then initialize stuff
-		
+			
 		// Else stay quiet
 
 		// MPI Barrier;
@@ -64,9 +66,10 @@ void DistributedQueue::ProcessFunction(int *argc, char *argv)
 
 		my_id = 0;
 
+		pthread_t threads[NUM_THREADS];
+
 		if(!ismasterofmaster(my_id)){
-			pthread_t threads[NUM_THREADS];
-		        for(int t=0; t < NUM_THREADS; t++){
+			for(int t=0; t < NUM_THREADS; t++){
 		                m_args *args = new m_args;
 		                args->obj = (void *) this;
 		                args->tid = (void *) t;			
@@ -78,6 +81,28 @@ void DistributedQueue::ProcessFunction(int *argc, char *argv)
 				}
 		                
 		        }
+			my_master = my_id % no_master_of_masters;
+		}else{
+			// init load
+			load = new int[no_masters];
+
+			// set initial load to 0
+			memset(load, 0, no_masters);
+
+			int k = 0;		
+			for(int i = no_master_of_masters; i < no_procs; i++){
+				if(i % no_master_of_masters == my_id){
+					k++;
+				}
+			}
+			myslaves = new int[k];
+			no_myslaves = k;
+			k = 0;
+			for(int i = no_master_of_masters; i < no_procs; i++){				
+				if(i % no_master_of_masters == my_id){
+					myslaves[k++] = i;
+				}
+			}					
 		}
 
 		// MPI Barrier
@@ -85,15 +110,42 @@ void DistributedQueue::ProcessFunction(int *argc, char *argv)
 		// This process runs indefinitely till the program is cancelled
 
 		while(1){
-			// receive load information from all the processes
-			// syncronize load information
-			// calculate loads
+			// loads are updated by all the masters to masters of masters
+			if(ismasterofmaster(my_id)){
+				MPI_Request requests[no_myslaves];
+				MPI_Status status[no_myslaves];
+				for(int i = 0 ; i < no_myslaves; i++){
+					MPI_Irecv(&load[myslaves[i]], 1, MPI_INT, myslaves[i], LOAD_UPDATE, MPI_COMM_WORLD, &requests[i]);
+				}
+				MPI_Waitall(no_myslaves, requests, status);
+			}else{
+				MPI_Request request;
+				int queue_size = queue->get_size();
+				MPI_Isend(&queue_size, 1, MPI_INT, my_master, LOAD_UPDATE, MPI_COMM_WORLD, &request);
+			}
+
+			MPI_Barrier(MPI_COMM_WORLD);
+
+			// syncronize load information amongst masters of masters
+			if(!ismasterofmaster(my_id)){
+				for(int i = 0; i < no_master_of_masters; i++){
+					MPI_Reduce(&local_load[0], &load[0], no_masters, MPI_INT, MPI_SUM, MEGA_MASTER, MPI_COMM_WORLD);
+				}
+				MPI_Bcast(&load[0], no_masters, MPI_INT, MEGA_MASTER, MPI_COMM_WORLD);
+			}
+
+			MPI_Barrier(MPI_COMM_WORLD);
+
+			// Analyze loads
+			
 			// initiate queue item transfers
-			// wait for transfers
+
+			// wait for transfers to complete before starting the loop again
+
 			break;
 		}
 
-		// once you break join all the threads on all the nodes
+		// once you break join all the threads on each of the master nodes
 
 		if(!ismasterofmaster(my_id)){
 		        for(int t=0; t < NUM_THREADS; t++) {
@@ -115,19 +167,11 @@ void DistributedQueue::ProcessFunction(int *argc, char *argv)
 void* DistributedQueue::CommunicationFunction(void* thread_id){
 
 		// This thread runs indefinitely till the program is cancelled
-		int mysize 
-		MPI_Request request[];
+		int mysize;
+		MPI_Request request;
 
 		if(ismasterofmaster(my_id)){
 			while(1){
-				for (i=0; i<size-1; i++)
-				{
-				    	
-				}
-				for (i=0; i<size-1; i++)
-				{
-				    	
-				}				
 				break;		
 			}				
 		}

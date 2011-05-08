@@ -21,7 +21,11 @@ class DistributedQueue
 		int no_procs;
 		int my_id;
 		WorkQueue *queue;
+		int my_master;
 		int *load;
+		int *local_load;
+		int *myslaves;
+		int no_myslaves;
 		static void* StaticThreadProc(void *args)
                 {
                         return reinterpret_cast<DistributedQueue*>(((m_args*)args)->obj)->ThreadFunction(((m_args*)args)->tid);
@@ -40,9 +44,9 @@ class DistributedQueue
                 }
 		
 	public:
-		DistributedQueue(int num_master_of_masters, int num_masters, int num_threads);
+		DistributedQueue(int num_threads);
 		~DistributedQueue(void);
-		void ProcessFunction(int *argc, char *argv);
+		void ProcessFunction(int *argc, char ***argv);
 		void* ThreadFunction(void* threadid);
 		void* AcceptExternalLoad(void* threadid);
 		void* CommunicationFunction(void* thread_id);
