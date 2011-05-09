@@ -26,6 +26,7 @@ class DistributedQueue
 		int *local_load;
 		int *myslaves;
 		int no_myslaves;
+		pthread_mutex_t entire_queue_mutex;
 		static void* StaticThreadProc(void *args)
                 {
                         return reinterpret_cast<DistributedQueue*>(((m_args*)args)->obj)->ThreadFunction(((m_args*)args)->tid);
@@ -54,6 +55,7 @@ class DistributedQueue
 		bool ismasterofmaster(int pid);
 		char* get_filenames_buffer(int diff, int *size);
 		char* add_filenames(char *buffer);
+		void load_dummy_data(void);
 };
 
 #endif
