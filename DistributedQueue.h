@@ -52,6 +52,8 @@ class DistributedQueue
 		void* CommunicationFunction(void* thread_id);
 		void* ManageProcessesFunction(void* thread_id);
 		bool ismasterofmaster(int pid);
+		char* get_filenames_buffer(int diff, int *size);
+		char* add_filenames(char *buffer);
 };
 
 #endif

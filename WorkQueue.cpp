@@ -87,6 +87,43 @@ int WorkQueue::get_size(void){
 	return size;
 }
 
+work_item* WorkQueue::get_at(int index){
+	work_item *temp = start;
+	int count;
+	while(temp->next != NULL){
+		count++;
+		if(count == index){
+			return temp;		
+		}	
+	}
+	return NULL;
+}
+
+work_item* WorkQueue::chop_from(int index){
+	work_item *temp = start;
+	int count;
+	while(temp != NULL){
+		count++;
+		if(count == index){
+			end = temp;
+			size = index;
+			end->next = NULL;	
+		}
+		temp = temp->next;	
+	}
+	return NULL;
+}
+
+void WorkQueue::free_from(work_item *temp){
+	work_item *temp1;
+	while(temp != NULL){
+		temp1 = temp1->next;
+		delete temp;
+		temp = temp1;			
+	}
+
+}
+
 void WorkQueue::reset_queue(void){
 	pthread_mutex_lock(&queue_mutex);
 	start = end = NULL;

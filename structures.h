@@ -13,8 +13,8 @@ using namespace std;
 
 struct work_item {
 	unsigned short load;
-	char *file_name;
-	bool is_spam;
+	char *filename;
+	bool isspam;
 	work_item *next;
 };
 

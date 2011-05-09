@@ -26,6 +26,9 @@ class WorkQueue
 		work_item* dequeue(void);
 		work_item** dequeue(int num);
 		int get_size(void);
+		work_item* get_at(int index);
+		work_item* chop_from(int index);
+		void free_from(work_item *temp);
 		void reset_queue(void);
 };
 
