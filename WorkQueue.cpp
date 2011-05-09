@@ -104,12 +104,15 @@ work_item* WorkQueue::chop_from(int index){
 	int count;
 	while(temp != NULL){
 		count++;
-		if(count == index){
+		if(count == (index - 1)){
 			end = temp;
+			cout << "MYYYY:" << size << endl;
 			size = index;
-			end->next = NULL;	
+			free_from(end->next);
+			end->next = NULL;
+			return NULL;				
 		}
-		temp = temp->next;	
+		temp = temp->next;
 	}
 	return NULL;
 }

@@ -63,6 +63,9 @@ char* DistributedQueue::get_filenames_buffer(int diff, int *size){
 	int size_here = queue->get_size();
 	work_item* item;
 	int start = size_here - diff;
+	if(my_id == 2){
+		cout << "Start:" << start << endl;
+	}
 	item = queue->get_at(start);
 	string buff;
 	char *final_buff;
@@ -74,8 +77,38 @@ char* DistributedQueue::get_filenames_buffer(int diff, int *size){
 	final_buff = new char[buff.size() + 1];
 	strcpy(final_buff, buff.c_str());
 	*(size) = buff.size() + 1;
+	cout << "start:" << start << endl;
+	//if(my_id == 2){
+		cout << "Sub Before:" << queue->get_size() << endl;
+	//}	
+	queue->chop_from(start);
+	//if(my_id == 2){
+		cout << "Sub After:" << queue->get_size() << endl;
+	//}
 	return final_buff;
 }
+
+char* DistributedQueue::add_filenames(char *buffer){
+	char *temp;
+	temp = strtok(buffer, "|");
+	if(my_id == 2){
+		cout << "Add Before:" << queue->get_size() << endl;
+	}
+	while(temp != NULL){
+		work_item *p = new work_item;
+		p->load = 1;
+		p->filename = new char[strlen(temp) + 1];
+		strcpy(p->filename, temp);
+		p->isspam = false;
+		p->next = NULL;
+		queue->enqueue(p);
+		temp = strtok(NULL, "|");		
+	}
+	if(my_id == 2){
+		cout << "Add After:" << queue->get_size() << endl;
+	}
+}
+
 
 void DistributedQueue::load_dummy_data(void){
 	srand ( (my_id + 1) * time(NULL) );
@@ -91,21 +124,6 @@ void DistributedQueue::load_dummy_data(void){
 	}
 }
 
-
-char* DistributedQueue::add_filenames(char *buffer){
-	char *temp;
-	temp = strtok(buffer, "|");
-	while(temp != NULL){
-		work_item *p = new work_item;
-		p->load = 1;
-		p->filename = new char[strlen(temp) + 1];
-		strcpy(p->filename, temp);
-		p->isspam = false;
-		p->next = NULL;
-		queue->enqueue(p);
-		temp = strtok(NULL, "|");		
-	}
-}
 
 // Each machine runs ProcessFunction
 
@@ -307,10 +325,10 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 				int my_curr_rank;
 				MPI_Comm_rank(masters_comm, &my_curr_rank);
 				steps  = 1;
-				int test_proc = 8;
+				int test_proc = 2;
 				for(int i = 0; i < steps; i++){
 					MPI_Status stat;
-					if(my_id == test_proc || my_id == test_proc + 1){
+					//if(my_id == test_proc || my_id == test_proc + 1){
 					if(((my_curr_rank + i) % no_masters) % 2 == 0){
 						int neighbor_load = 0;
 						int diff = 0;
@@ -349,7 +367,7 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 								MPI_Recv(&size, 1, MPI_INT, right_neighbor, SIZE_UPDATE, masters_comm, &stat);
 								buffer = new char[size];
 								// recieve the message
-								MPI_Recv(&buffer, size, MPI_CHAR, right_neighbor, LOAD_TRANSFER, masters_comm, &stat);
+								MPI_Recv(&buffer[0], size, MPI_CHAR, right_neighbor, LOAD_TRANSFER, masters_comm, &stat);
 								add_filenames(buffer);
 							}
 						}
@@ -374,8 +392,8 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 								if(my_id == test_proc + 1){
 									cout << "size:" << size << endl;
 								}
-								MPI_Recv(&buffer, size, MPI_CHAR, left_neighbor, LOAD_TRANSFER, masters_comm, &stat);
-								/*add_filenames(buffer);*/
+								MPI_Recv(&buffer[0], size, MPI_CHAR, left_neighbor, LOAD_TRANSFER, masters_comm, &stat);
+								add_filenames(buffer);
 							
 							}else{
 								diff = -1 * diff;
@@ -393,7 +411,7 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 						}
 													
 					}
-					}
+					//}
 					MPI_Barrier(masters_comm);												
 				}
 			}			
