@@ -84,7 +84,7 @@ char* DistributedQueue::get_filenames_buffer(int diff, int *size){
 	*(size) = buff.size() + 1;
 	queue->chop_from(start);
 	fflush(stdout);
-	cout << "get_filenames_buffer:" << my_id << "::Removed:" << count << endl;
+	//cout << "get_filenames_buffer:" << my_id << "::Removed:" << count << endl;
 	return final_buff;
 }
 
@@ -104,7 +104,7 @@ char* DistributedQueue::add_filenames(char *buffer){
 		temp = strtok(NULL, "|");
 		count++;	
 	}
-	cout << "add_filenames:" << my_id << "::Added:" << count << endl;
+	//cout << "add_filenames:" << my_id << "::Added:" << count << endl;
 }
 
 
@@ -175,7 +175,7 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 			sprintf(file_name, "Output_%d.txt\0", my_id);
 			file_obj = new FileIO(file_name);
 			load_dummy_data();
-			cout << "Queue size:" << queue->get_size() << ":: Process:" << my_id << endl;
+			cout << "INITIAL Queue size at node " << my_id << " is:" << queue->get_size() << endl;
 		}
 
 		
@@ -325,7 +325,7 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 					}
 				}
 				if(my_id == MEGA_MASTER){
-					cout << "Out of Order:" << out_of_order << endl;
+					//cout << "Out of Order:" << out_of_order << endl;
 				}
 				if(out_of_order > 0 && out_of_order < no_masters/4){
 					steps = 3;
@@ -339,7 +339,7 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 					steps = 0;
 				}
 				if(my_id == MEGA_MASTER){
-					cout << "Steps:" << steps << endl;
+					//cout << "Steps:" << steps << endl;
 				}
 				MPI_Bcast(&steps, 1, MPI_INT, MEGA_MASTER, MPI_COMM_WORLD);
 			}else{
@@ -356,13 +356,6 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 				cout << "-------------------------------\nBeforeRound Final\n-------------------------------" << endl;
 			}*/
 	
-			fflush(stdout);
-
-			if(my_id >= no_master_of_masters){
-				cout << "Queue size at node " << my_id << " is:" << queue->get_size() << endl;
-				//cout << "-------------------------------\nCompleted Final\n-------------------------------" << endl;
-			}
-
 			// initiate queue item transfers 'steps' times
 
 			// lock external loading and queue processing
@@ -453,14 +446,15 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 					MPI_Barrier(masters_comm);												
 				}
 			}
-	
-			/*if(my_id == MEGA_MASTER){
-				cout << "-------------------------------\nAFTERRound\n-------------------------------" << endl;
-				cout << "Round:" << (round++) << endl;
-				cout << "-------------------------------\nAFTERRound Final\n-------------------------------" << endl;
-			}
-	
+
 			fflush(stdout);
+
+			if(my_id >= no_master_of_masters){
+				cout << "Queue size at node " << my_id << " is:" << queue->get_size() << endl;
+				//cout << "-------------------------------\nCompleted Final\n-------------------------------" << endl;
+			}
+		
+			/*fflush(stdout);
 
 			if(my_id >= no_master_of_masters){
 				cout << "AFTER Queue size at" << my_id << " is:" << queue->get_size() << endl;
@@ -619,7 +613,7 @@ void* DistributedQueue::AcceptExternalLoad(void* thread_id){
 
       		// This thread runs indefinitely till the program is cancelled
 
-	     int sockfd, newsockfd, portno, pid;
+	     /*int sockfd, newsockfd, portno, pid;
 	     socklen_t clilen;
 	     struct sockaddr_in serv_addr, cli_addr;
 	     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -651,13 +645,13 @@ void* DistributedQueue::AcceptExternalLoad(void* thread_id){
 	         item->load = 1;
 	         item->next = NULL;
 	         pthread_mutex_lock (&entire_queue_mutex);
-	         /*cout << "----------------------------------------COUT-----------------------------------------" << endl;
+	         cout << "----------------------------------------COUT-----------------------------------------" << endl;
 	         cout << "1. RECEIVED MESSAGE:" << queue->get_size() << endl;
-	         cout << "----------------------------------------COUT-----------------------------------------" << endl;*/
+	         cout << "----------------------------------------COUT-----------------------------------------" << endl;
 	         queue->enqueue(item);
-	         /*cout << "----------------------------------------COUT-----------------------------------------" << endl;
+	         cout << "----------------------------------------COUT-----------------------------------------" << endl;
 	         cout << "2. RECEIVED MESSAGE:" << queue->get_size() << endl;
-	         cout << "----------------------------------------COUT-----------------------------------------" << endl;*/
+	         cout << "----------------------------------------COUT-----------------------------------------" << endl;
 	         pthread_mutex_unlock (&entire_queue_mutex);
 		 pid = fork();
 		 if (pid < 0)
@@ -667,9 +661,11 @@ void* DistributedQueue::AcceptExternalLoad(void* thread_id){
 		     exit(0);
 		 }
 		 else close(newsockfd);
-	     } /* end of while */
+	     } 
 	     close(sockfd);
-	     return 0; /* we never get here */
+	     return 0; 
+	     */
+	     return (void *)0;
 }
 
 /* Only for Master of Masters */
