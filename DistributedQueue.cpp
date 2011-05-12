@@ -111,7 +111,7 @@ char* DistributedQueue::add_filenames(char *buffer){
 void DistributedQueue::load_dummy_data(void){
 	char command[50];
 	srand ( (my_id + 1) * time(NULL) );
-	int load = rand() % 100;
+	int load = rand() % 500;
 	system("cd temp;rm -rf *;cd ..");
 	for(int i = 0; i < load; i++){
 		work_item *item = new work_item;
@@ -145,7 +145,7 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 		MPI_Comm_group( MPI_COMM_WORLD, &temp1);
 		MPI_Comm_group( MPI_COMM_WORLD, &temp2);
 
-		no_master_of_masters = no_procs/4;
+		no_master_of_masters = no_procs/5;
 		no_masters = no_procs - no_master_of_masters;
 
 		char file_name[20];
@@ -328,13 +328,18 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 					cout << "Out of Order:" << out_of_order << endl;
 				}
 				if(out_of_order > 0 && out_of_order < no_masters/4){
-					steps = 2;
+					steps = 3;
 				}else if(out_of_order > no_masters/4 && out_of_order < no_masters/2){
-					steps = 2;
+					steps = 1;
 				}else if(out_of_order > no_masters/2 && out_of_order < (3*no_masters)/4){
 					steps = 1;
+				}else if(out_of_order > (3*no_masters)/4 && out_of_order < (3*no_masters)){
+					steps = 2;
 				}else{
 					steps = 0;
+				}
+				if(my_id == MEGA_MASTER){
+					cout << "Steps:" << steps << endl;
 				}
 				MPI_Bcast(&steps, 1, MPI_INT, MEGA_MASTER, MPI_COMM_WORLD);
 			}else{
