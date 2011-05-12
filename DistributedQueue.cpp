@@ -325,21 +325,21 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 					}
 				}
 				if(my_id == MEGA_MASTER){
-					//cout << "Out of Order:" << out_of_order << endl;
+					cout << "Out of Order:" << out_of_order << endl;
 				}
 				if(out_of_order > 0 && out_of_order < no_masters/4){
-					steps = 3;
+					steps = 5;
 				}else if(out_of_order > no_masters/4 && out_of_order < no_masters/2){
-					steps = 1;
+					steps = 4;
 				}else if(out_of_order > no_masters/2 && out_of_order < (3*no_masters)/4){
-					steps = 1;
-				}else if(out_of_order > (3*no_masters)/4 && out_of_order < (3*no_masters)){
-					steps = 2;
+					steps = 4;
+				}else if(out_of_order > (3*no_masters)/4 && out_of_order < no_masters){
+					steps = 5;
 				}else{
 					steps = 0;
 				}
 				if(my_id == MEGA_MASTER){
-					//cout << "Steps:" << steps << endl;
+					cout << "Steps:" << steps << endl;
 				}
 				MPI_Bcast(&steps, 1, MPI_INT, MEGA_MASTER, MPI_COMM_WORLD);
 			}else{
@@ -466,7 +466,7 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 
 			pthread_mutex_unlock (&entire_queue_mutex);
 			// wait for transfers to complete before starting the loop again
-			sleep(5);			
+			sleep(3);			
 			MPI_Barrier(MPI_COMM_WORLD);
 			
 		}
@@ -612,8 +612,8 @@ void* DistributedQueue::AcceptExternalLoad(void* thread_id){
 		// socket to accept filenames as input for queues
 
       		// This thread runs indefinitely till the program is cancelled
-
-	     /*int sockfd, newsockfd, portno, pid;
+	     /*
+	     int sockfd, newsockfd, portno, pid;
 	     socklen_t clilen;
 	     struct sockaddr_in serv_addr, cli_addr;
 	     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -645,13 +645,7 @@ void* DistributedQueue::AcceptExternalLoad(void* thread_id){
 	         item->load = 1;
 	         item->next = NULL;
 	         pthread_mutex_lock (&entire_queue_mutex);
-	         cout << "----------------------------------------COUT-----------------------------------------" << endl;
-	         cout << "1. RECEIVED MESSAGE:" << queue->get_size() << endl;
-	         cout << "----------------------------------------COUT-----------------------------------------" << endl;
 	         queue->enqueue(item);
-	         cout << "----------------------------------------COUT-----------------------------------------" << endl;
-	         cout << "2. RECEIVED MESSAGE:" << queue->get_size() << endl;
-	         cout << "----------------------------------------COUT-----------------------------------------" << endl;
 	         pthread_mutex_unlock (&entire_queue_mutex);
 		 pid = fork();
 		 if (pid < 0)
