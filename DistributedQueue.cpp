@@ -327,13 +327,13 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 				if(my_id == MEGA_MASTER){
 					cout << "Out of Order:" << out_of_order << endl;
 				}
-				if(out_of_order > 0 && out_of_order < no_masters/4){
+				if(out_of_order > 0 && out_of_order <= no_masters/4){
 					steps = 5;
-				}else if(out_of_order > no_masters/4 && out_of_order < no_masters/2){
+				}else if(out_of_order > no_masters/4 && out_of_order <= no_masters/2){
 					steps = 4;
-				}else if(out_of_order > no_masters/2 && out_of_order < (3*no_masters)/4){
+				}else if(out_of_order > no_masters/2 && out_of_order <= (3*no_masters)/4){
 					steps = 4;
-				}else if(out_of_order > (3*no_masters)/4 && out_of_order < no_masters){
+				}else if(out_of_order > (3*no_masters)/4 && out_of_order <= no_masters){
 					steps = 5;
 				}else{
 					steps = 0;
