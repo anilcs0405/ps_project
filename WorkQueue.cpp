@@ -25,6 +25,7 @@ bool WorkQueue::enqueue(work_item *item){
 	pthread_mutex_lock (&queue_mutex);
 	if(start == NULL && end == NULL){
 		start = end = item;
+		size++;
 	}else{
 		end->next = item;
 		end = item;
@@ -89,25 +90,25 @@ int WorkQueue::get_size(void){
 
 work_item* WorkQueue::get_at(int index){
 	work_item *temp = start;
-	int count;
-	while(temp->next != NULL){
+	int count = 0;
+	while(temp != NULL){
 		count++;
 		if(count == index){
 			return temp;		
-		}	
+		}
+		temp = temp->next;	
 	}
 	return NULL;
 }
 
 work_item* WorkQueue::chop_from(int index){
 	work_item *temp = start;
-	int count;
+	int count = 0;
 	while(temp != NULL){
 		count++;
 		if(count == (index - 1)){
 			end = temp;
-			cout << "MYYYY:" << size << endl;
-			size = index;
+			size = (index - 1);
 			free_from(end->next);
 			end->next = NULL;
 			return NULL;				
@@ -120,7 +121,8 @@ work_item* WorkQueue::chop_from(int index){
 void WorkQueue::free_from(work_item *temp){
 	work_item *temp1;
 	while(temp != NULL){
-		temp1 = temp1->next;
+		temp1 = temp->next;
+		delete temp->filename;
 		delete temp;
 		temp = temp1;			
 	}

@@ -2,18 +2,23 @@
 #include <iostream>
 #include <sstream>
 #include <cstdlib>
+#include <stdio.h>
 #include <map>
 #include <list>
 #include <ctime>
 #include <string.h>
 #include <math.h>
 #include <fstream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include "FileIO.h"
 #include "WorkQueue.h"
 #include "DistributedQueue.h"
 
-#define NUM_THREADS 8
+#define NUM_THREADS 4
 
 //MPI tags
 
@@ -23,8 +28,9 @@
 #define LOAD_TRANSFER 3
 
 #define MEGA_MASTER 0
-#define EPSILON 5
+#define EPSILON 4
 
+#define PORT_NO 517113
 
 void gen_random(char *s, const int len) {
     static const char alphanum[] =
@@ -63,37 +69,30 @@ char* DistributedQueue::get_filenames_buffer(int diff, int *size){
 	int size_here = queue->get_size();
 	work_item* item;
 	int start = size_here - diff;
-	if(my_id == 2){
-		cout << "Start:" << start << endl;
-	}
 	item = queue->get_at(start);
 	string buff;
 	char *final_buff;
+	int count = 0;
 	while(item != NULL){
 		buff.append(item->filename);
 		buff.append("|");
 		item = item -> next;
+		count++;
 	}
 	final_buff = new char[buff.size() + 1];
 	strcpy(final_buff, buff.c_str());
 	*(size) = buff.size() + 1;
-	cout << "start:" << start << endl;
-	//if(my_id == 2){
-		cout << "Sub Before:" << queue->get_size() << endl;
-	//}	
 	queue->chop_from(start);
-	//if(my_id == 2){
-		cout << "Sub After:" << queue->get_size() << endl;
-	//}
+	fflush(stdout);
+	cout << "get_filenames_buffer:" << my_id << "::Removed:" << count << endl;
 	return final_buff;
 }
 
 char* DistributedQueue::add_filenames(char *buffer){
 	char *temp;
 	temp = strtok(buffer, "|");
-	if(my_id == 2){
-		cout << "Add Before:" << queue->get_size() << endl;
-	}
+	int count = 0;
+	fflush(stdout);
 	while(temp != NULL){
 		work_item *p = new work_item;
 		p->load = 1;
@@ -102,25 +101,30 @@ char* DistributedQueue::add_filenames(char *buffer){
 		p->isspam = false;
 		p->next = NULL;
 		queue->enqueue(p);
-		temp = strtok(NULL, "|");		
+		temp = strtok(NULL, "|");
+		count++;	
 	}
-	if(my_id == 2){
-		cout << "Add After:" << queue->get_size() << endl;
-	}
+	cout << "add_filenames:" << my_id << "::Added:" << count << endl;
 }
 
 
 void DistributedQueue::load_dummy_data(void){
+	char command[50];
 	srand ( (my_id + 1) * time(NULL) );
-	int load = rand() % 400;
+	int load = rand() % 100;
+	system("cd temp;rm -rf *;cd ..");
 	for(int i = 0; i < load; i++){
 		work_item *item = new work_item;
 		item->filename = new char[30];
-		gen_random(item->filename, 15);
-		item->load = (rand() % 2) + 1;
+		//gen_random(item->filename, 8);
+		strcpy(item->filename, "README_T");
+		item->load = 1;
+		//item->load = (rand() % 2) + 1;
 		item->isspam = false;
 		item->next = NULL;
 		queue->enqueue(item);
+		//sprintf(command,"cp README ./temp/%s",item->filename);		
+		system(command);
 	}
 }
 
@@ -144,6 +148,8 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 		no_master_of_masters = no_procs/4;
 		no_masters = no_procs - no_master_of_masters;
 
+		char file_name[20];
+
 		int *ranks, *mranks;
 		ranks = new int[no_master_of_masters];
 		mranks = new int[no_masters];
@@ -165,6 +171,9 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 		/*MPI Test */
 		if(!ismasterofmaster(my_id)){
 			queue = new WorkQueue();
+			result_queue = new WorkQueue();
+			sprintf(file_name, "Output_%d.txt\0", my_id);
+			file_obj = new FileIO(file_name);
 			load_dummy_data();
 			cout << "Queue size:" << queue->get_size() << ":: Process:" << my_id << endl;
 		}
@@ -224,8 +233,35 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 
 		MPI_Barrier(MPI_COMM_WORLD);
 
+		/*if(my_id == 2){
+			fflush(stdout);
+			cout << my_id << "Initial files:" << endl;
+			work_item *t;
+			int count = 0;
+			while((t = queue->dequeue()) != NULL){
+				cout << (count++) << "::" << t->filename << endl;
+			}		
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+
+
+		if(my_id == 3){
+			fflush(stdout);
+			cout << my_id << ":Initial files:" << endl;
+			work_item *t;
+			int count = 0;
+			while((t = queue->dequeue()) != NULL){
+				cout << (count++) << "::" << t->filename << endl;
+			}		
+		}*/
+
+		MPI_Barrier(MPI_COMM_WORLD);
+
 		// This process runs indefinitely till the program is cancelled
 		
+		int round = 1;
+
 		while(1){
 			// loads are updated by all the masters to masters of masters
 			
@@ -280,8 +316,8 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 				double underload = 0.75 * (average_load);
 				double overload = 1.25 * (average_load);
 				if(my_id == MEGA_MASTER){
-					cout << "underload:" << floor(underload) << endl;
-					cout << "overload:" << floor(overload) << endl;
+					//cout << "underload:" << floor(underload) << endl;
+					//cout << "overload:" << floor(overload) << endl;
 				}
 				for(int i = 0; i < no_masters; i++){
 					if((load[i] < floor(underload) || load[i] > floor(overload)) && load[i] > 4 * EPSILON){
@@ -292,13 +328,13 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 					cout << "Out of Order:" << out_of_order << endl;
 				}
 				if(out_of_order > 0 && out_of_order < no_masters/4){
-					steps = 4;
-				}else if(out_of_order > no_masters/4 && out_of_order < no_masters/2){
-					steps = 3;
-				}else if(out_of_order > no_masters/2 && out_of_order < (3*no_masters)/4){
 					steps = 2;
-				}else{
+				}else if(out_of_order > no_masters/4 && out_of_order < no_masters/2){
+					steps = 2;
+				}else if(out_of_order > no_masters/2 && out_of_order < (3*no_masters)/4){
 					steps = 1;
+				}else{
+					steps = 0;
 				}
 				MPI_Bcast(&steps, 1, MPI_INT, MEGA_MASTER, MPI_COMM_WORLD);
 			}else{
@@ -306,16 +342,21 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 			}
 			
 			fflush(stdout);
-			if(my_id == MEGA_MASTER){
-				cout << "steps for balance:" << steps << endl;
-				cout << "-------------------------------\nCompleted Final\n-------------------------------" << endl;
-			}
-			/*if(my_id == MEGA_MASTER){
-				cout << "Load at Slave 1:" << load[myslaves[0] - no_master_of_masters + 1] << endl;
-				cout << "-------------------------------\nCompleted Final\n-------------------------------" << endl;
-			}*/
 
 			MPI_Barrier(MPI_COMM_WORLD);
+			
+			/*if(my_id == MEGA_MASTER){
+				cout << "-------------------------------\nBeforeRound\n-------------------------------" << endl;
+				cout << "Round:" << (round++) << endl;
+				cout << "-------------------------------\nBeforeRound Final\n-------------------------------" << endl;
+			}*/
+	
+			fflush(stdout);
+
+			if(my_id >= no_master_of_masters){
+				cout << "Queue size at node " << my_id << " is:" << queue->get_size() << endl;
+				//cout << "-------------------------------\nCompleted Final\n-------------------------------" << endl;
+			}
 
 			// initiate queue item transfers 'steps' times
 
@@ -324,8 +365,8 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 			if(!ismasterofmaster(my_id)){
 				int my_curr_rank;
 				MPI_Comm_rank(masters_comm, &my_curr_rank);
-				steps  = 1;
-				int test_proc = 2;
+				int test_proc = 8;
+				//steps = 1;
 				for(int i = 0; i < steps; i++){
 					MPI_Status stat;
 					//if(my_id == test_proc || my_id == test_proc + 1){
@@ -333,17 +374,10 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 						int neighbor_load = 0;
 						int diff = 0;
 						int right_neighbor = (my_curr_rank + 1) % no_masters;
-						MPI_Recv(&neighbor_load, 1, MPI_INT, right_neighbor, LOAD_UPDATE, masters_comm, &stat);
-						if(my_id == test_proc){
-							cout << "Neighbor_load:" << neighbor_load << endl;
-						}
+						MPI_Recv(&neighbor_load, 1, MPI_INT, right_neighbor, LOAD_UPDATE, masters_comm, &stat);				
 						//calculate to send the send diff
 
 						diff = (queue->get_size() - neighbor_load)/2;
-						
-						if(my_id == test_proc){
-							cout << "Diff:" << diff << endl;
-						}
 						
 						MPI_Send(&diff, 1, MPI_INT, right_neighbor, DIFF_UPDATE, masters_comm);
 						
@@ -352,10 +386,9 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 							int size; 
 							char *buffer;
 							if(diff > EPSILON){
+								//cout << "SB Queue size:" << queue->get_size() << endl;
 								buffer = get_filenames_buffer(diff, &size);
-								if(my_id == test_proc){
-									cout << "1: size:" << size << endl;
-								}
+								//cout << "SA Queue size:" << queue->get_size() << endl;
 								// send the size and create buffer to hold the message
 								MPI_Send(&size, 1, MPI_INT, right_neighbor, SIZE_UPDATE, masters_comm);
 								// send the message
@@ -368,7 +401,9 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 								buffer = new char[size];
 								// recieve the message
 								MPI_Recv(&buffer[0], size, MPI_CHAR, right_neighbor, LOAD_TRANSFER, masters_comm, &stat);
+								//cout << "RB Queue size:" << queue->get_size() << endl;
 								add_filenames(buffer);
+								//cout << "RA Queue size:" << queue->get_size() << endl;								
 							}
 						}
 						
@@ -389,18 +424,16 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 								MPI_Recv(&size, 1, MPI_INT, left_neighbor, SIZE_UPDATE, masters_comm, &stat);
 								buffer = new char[size];
 								// recieve the message
-								if(my_id == test_proc + 1){
-									cout << "size:" << size << endl;
-								}
 								MPI_Recv(&buffer[0], size, MPI_CHAR, left_neighbor, LOAD_TRANSFER, masters_comm, &stat);
+								//cout << "RB Queue size:" << queue->get_size() << endl;
 								add_filenames(buffer);
+								//cout << "RA Queue size:" << queue->get_size() << endl;								
 							
 							}else{
 								diff = -1 * diff;
+								//cout << "SB Queue size:" << queue->get_size() << endl;
 								buffer = get_filenames_buffer(diff, &size);
-								if(my_id == test_proc + 1){
-									cout << "size:" << size << endl;
-								}
+								//cout << "SA Queue size:" << queue->get_size() << endl;
 								//send the size and create buffer to hold the message
 								MPI_Send(&size, 1, MPI_INT, left_neighbor, SIZE_UPDATE, masters_comm);
 								
@@ -414,15 +447,33 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 					//}
 					MPI_Barrier(masters_comm);												
 				}
-			}			
-			
+			}
+	
+			/*if(my_id == MEGA_MASTER){
+				cout << "-------------------------------\nAFTERRound\n-------------------------------" << endl;
+				cout << "Round:" << (round++) << endl;
+				cout << "-------------------------------\nAFTERRound Final\n-------------------------------" << endl;
+			}
+	
+			fflush(stdout);
+
+			if(my_id >= no_master_of_masters){
+				cout << "AFTER Queue size at" << my_id << " is:" << queue->get_size() << endl;
+				if( queue->get_size() > 0 && queue->dequeue() == NULL){
+					cout << "THIS IS CRAP" << endl;
+				}
+				//cout << "-------------------------------\nCompleted Final\n-------------------------------" << endl;
+			}*/
+
 			pthread_mutex_unlock (&entire_queue_mutex);
 			// wait for transfers to complete before starting the loop again
-			sleep(1);			
+			sleep(5);			
 			MPI_Barrier(MPI_COMM_WORLD);
 			
 		}
 		
+		
+
 		MPI_Barrier(MPI_COMM_WORLD);
 
 		// once you break join all the threads on each of the master nodes
@@ -435,10 +486,11 @@ void DistributedQueue::ProcessFunction(int *argc, char ***argv)
 		
 		// finalize 
 		
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Barrier(MPI_COMM_WORLD); 
 		
 		MPI_Finalize();
 
+		
 		
 }
 
@@ -476,23 +528,81 @@ void* DistributedQueue::ThreadFunction(void* thread_id){
 
 		/******* Application goes here ********/
 
+
+		char command[50];
+		char spamString[10];
+		float spamProb = 0.0;
+		bool flag;
+		int c;
+		int initial_sleep = 0;
+		
 		while(1){
+			
 			pthread_mutex_lock (&entire_queue_mutex);
 			int size = queue->get_size();
 			if(size == 0){
 				pthread_mutex_unlock (&entire_queue_mutex);
-				return (void *)1;	
-			}
-			work_item *item = queue->dequeue();
-			pthread_mutex_unlock (&entire_queue_mutex);
-			if(item != NULL){
-				//sleep(item->load);
-				//fflush(stdout);
-				//cout << "Processed File:" << item->filename << ":: Process:" << my_id << "::Thread:" << ((int) thread_id) << endl;
+				if((int)thread_id == 1){
+					work_item *p;
+					p = result_queue->dequeue();
+					if(p != NULL){
+						file_obj->writeToFile(p);
+						delete p->filename;
+						delete p;
+					}					
+				}
+				//return (void *)1;	
+			}else{
+				initial_sleep = 0;
+				work_item *item = queue->dequeue();
+				pthread_mutex_unlock (&entire_queue_mutex);
+				if(item != NULL){
+					//sleep(item->load);
+					//if(my_id == 2 || my_id == 3){
+					fflush(stdout);
+					//cout << ":: Process:" << my_id << "::Thread:" << ((int) thread_id) << "Processed File:" << item->filename << endl;
+					//}
+
+					//sprintf(command,"cat ./temp/%s | ./bmf -t",item->filename);
+
+				        sprintf(command,"cat %s | ./bmf -t",item->filename);
+
+					FILE *bmfOutput = popen(command, "r"); // System call to bmf
 				
-				delete item->filename;
-				delete item;
-			}			
+					if(bmfOutput == NULL){
+						cout << "THREAD_ID::" << ((int) thread_id) << "Error opening the bmf Output file" << endl;   
+					}else{
+						do{
+		      					c = fgetc (bmfOutput);      					
+		    				} while (c != ':');
+						c = fgetc(bmfOutput); //File pointer now at the spamProb value
+
+						fgets(spamString, 8, bmfOutput);	
+						spamString[8] = '\0';
+						spamProb = atof(spamString);			
+						fclose (bmfOutput);				
+					}			
+					if(spamProb < 0.500000f){
+						item->isspam = false;
+					}else{
+						item->isspam = true;
+					}
+
+					//cout << ":: Is SPAM:" << item->isspam <<  endl;
+
+					work_item *temp = new work_item;
+					temp->filename = new char[strlen(item->filename) + 1];
+					strcpy(temp->filename,item->filename);
+					temp->load = item->load;
+					temp->isspam = item->isspam;
+					temp->next = NULL;
+					flag = result_queue->enqueue(temp);
+					
+
+					delete item->filename;
+					delete item;
+				}
+			}		
 		}		
 		return (void *)1;
 
@@ -500,16 +610,61 @@ void* DistributedQueue::ThreadFunction(void* thread_id){
 
 void* DistributedQueue::AcceptExternalLoad(void* thread_id){
 
-		// Might be a socket/communication with another process
+		// socket to accept filenames as input for queues
 
       		// This thread runs indefinitely till the program is cancelled
 
-		while(1){
-			break;
-		}
-
-                return (void *)1;
-
+	     int sockfd, newsockfd, portno, pid;
+	     socklen_t clilen;
+	     struct sockaddr_in serv_addr, cli_addr;
+	     sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	     if (sockfd < 0) 
+		fprintf(stderr, "ERROR opening socket");
+	     bzero((char *) &serv_addr, sizeof(serv_addr));
+	     portno = PORT_NO + my_id - 2;
+	     serv_addr.sin_family = AF_INET;
+	     serv_addr.sin_addr.s_addr = INADDR_ANY;
+	     serv_addr.sin_port = htons(portno);
+	     if (bind(sockfd, (struct sockaddr *) &serv_addr,
+		      sizeof(serv_addr)) < 0) 
+		      fprintf(stderr, "ERROR on binding");
+	     listen(sockfd,5);
+	     clilen = sizeof(cli_addr);
+	     while (1) {
+		 newsockfd = accept(sockfd, 
+		       (struct sockaddr *) &cli_addr, &clilen);
+		 if (newsockfd < 0) 
+		     fprintf(stderr, "ERROR on accept");
+		 char buffer[256];		      
+	         bzero(buffer,256);
+		 int n;
+	         n = read(newsockfd,buffer,255);
+	         work_item *item = new work_item;
+	         item->filename = new char[strlen(buffer)+1];
+	         strcpy(item->filename, buffer);
+	         item->isspam = false;
+	         item->load = 1;
+	         item->next = NULL;
+	         pthread_mutex_lock (&entire_queue_mutex);
+	         /*cout << "----------------------------------------COUT-----------------------------------------" << endl;
+	         cout << "1. RECEIVED MESSAGE:" << queue->get_size() << endl;
+	         cout << "----------------------------------------COUT-----------------------------------------" << endl;*/
+	         queue->enqueue(item);
+	         /*cout << "----------------------------------------COUT-----------------------------------------" << endl;
+	         cout << "2. RECEIVED MESSAGE:" << queue->get_size() << endl;
+	         cout << "----------------------------------------COUT-----------------------------------------" << endl;*/
+	         pthread_mutex_unlock (&entire_queue_mutex);
+		 pid = fork();
+		 if (pid < 0)
+		     fprintf(stderr,"ERROR on fork");
+		 if (pid == 0)  {
+		     close(sockfd);
+		     exit(0);
+		 }
+		 else close(newsockfd);
+	     } /* end of while */
+	     close(sockfd);
+	     return 0; /* we never get here */
 }
 
 /* Only for Master of Masters */

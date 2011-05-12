@@ -6,6 +6,7 @@
 
 #include "structures.h"
 #include "WorkQueue.h"
+#include "FileIO.h"
 
 #ifndef DISTRIBUTEDQUEUE_H
 #define DISTRIBUTEDQUEUE_H
@@ -20,12 +21,13 @@ class DistributedQueue
 		int no_threads;
 		int no_procs;
 		int my_id;
-		WorkQueue *queue;
+		WorkQueue *queue, *result_queue;
 		int my_master;
 		int *load;
 		int *local_load;
 		int *myslaves;
 		int no_myslaves;
+		FileIO *file_obj;
 		pthread_mutex_t entire_queue_mutex;
 		static void* StaticThreadProc(void *args)
                 {
